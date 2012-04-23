@@ -28,6 +28,10 @@ public class Connection implements Runnable {
     private BufferedInputStream input;
     private BufferedOutputStream output;
 
+    // Receiving recorded data
+    private ArrayList<Point> recordedData;
+    private boolean isReceivingRecordedData = false;
+    
     /** Constructor */
     public Connection(Server hostServer, Socket sock) {
 	this.mHostServer = hostServer;
@@ -35,6 +39,7 @@ public class Connection implements Runnable {
 	System.out.println("Connection instantiated...");
     }
 
+    /* Handy method to directly download text */
     public String convertStreamToString(InputStream is) {
 	return new Scanner(is).useDelimiter("\\A").next();
     }
@@ -135,32 +140,35 @@ public class Connection implements Runnable {
 		// process requests
 		String message = recvString();
 
-                
-                if (message.length() > 2) {	
-                    if (message.substring(0, 3).equalsIgnoreCase("101")) {
-			String[] arr = message.split(":");
-
-                        setSensorValueToGUI(Integer.valueOf(arr[1]), Integer.valueOf(arr[2]));
-			//System.out.println(String.format("Sensor %s: %s", arr[1], arr[2]));
-                    } else if (message.substring(0, 3).equalsIgnoreCase("104")) {
-                        ArrayList<Point> recordedData = new ArrayList<Point>();
-                        
-                        String sensorValue = recvString();
-                        while (!sensorValue.substring(0, 3).equalsIgnoreCase("105")) {
-                            String[] arr = sensorValue.split(":");
-                            recordedData.add(new Point(Integer.valueOf(arr[1]), Integer.valueOf(arr[2])));
-                            
-                            sensorValue = recvString();
-                        }
-                        
-                        
-                        setRecordedDataToGUI(recordedData);
-                    } else {
-                        setTextToDisplay(message);
+                try {
+                    int cmd = Integer.parseInt(message.substring(0, 3));
+                    String[] arr = message.split(":");
+                    switch (cmd) {
+                        case 101:
+                            int sID = Integer.valueOf(arr[1]);
+                            int val = Integer.valueOf(arr[2]);
+                            if (!isReceivingRecordedData) {
+                                setSensorValueToGUI(sID, val);
+                            } else {
+                                recordedData.add(new Point(sID, val));
+                            }
+                            break;
+                        case 104:
+                            System.out.println("Start receiving recorded data...");
+                            recordedData = new ArrayList<Point>();
+                            isReceivingRecordedData = true;
+                            break;
+                        case 105:
+                            System.out.println("Stop receiving recorded data...");
+                            setRecordedDataToGUI(recordedData);
+                            isReceivingRecordedData = false;
                     }
-		} 
-                
-		if (message.equalsIgnoreCase("exit")) {
+                    
+                } catch (NumberFormatException e) {
+                    setTextToDisplay(message);
+                }
+
+                if (message.equalsIgnoreCase("exit")) {
                     setTextToDisplay("Exiting...");
                     break;
 		}

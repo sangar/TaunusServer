@@ -719,7 +719,7 @@ public class TaunusServerUI extends javax.swing.JFrame {
             startStreamButton.setEnabled(true);
             stopStreamButton.setEnabled(false);
 
-//            playButton.setEnabled(true);
+            playButton.setEnabled(true);
         }
     }//GEN-LAST:event_stopStreamButtonActionPerformed
 
@@ -850,7 +850,7 @@ public class TaunusServerUI extends javax.swing.JFrame {
 
                         // Draw vertical line /
                         a1 = new XYLineAnnotation(i, 0, i, 1024);
-                        plot.addAnnotation(a1);
+// redraws the whole line chart - plot.addAnnotation(a1);
                         
 //                        subplot = new XYPlot(dataset, null, new NumberAxis("Fourth"), new StandardXYItemRenderer());
 //                        subplot.addAnnotation(a1);
@@ -865,7 +865,7 @@ public class TaunusServerUI extends javax.swing.JFrame {
                                 null, ex);
                         }        
                     
-                        plot.removeAnnotation(a1);
+// redraws the whole line chart - plot.removeAnnotation(a1);
 //                        subplot.removeAnnotation(a1);
                         
                         if (!isPlaying) {
@@ -977,6 +977,7 @@ public class TaunusServerUI extends javax.swing.JFrame {
     }
 
     public void onRecordedDataReceive(ArrayList<Point> rd) {
+        clearXYSeries();
         for (Point point : rd) {
             this.setSensorValue(point.x, point.y);
         }
