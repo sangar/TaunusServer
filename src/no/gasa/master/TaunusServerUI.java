@@ -54,6 +54,8 @@ public class TaunusServerUI extends javax.swing.JFrame {
     private XYSeries series3;
     private XYSeries series4;
 
+    final private int PORT = 14253; // Default 14253
+    
     // <editor-fold defaultstate="collapsed" desc="Create dataset">
     private XYDataset createDataset() {
         series1 = new XYSeries("First");
@@ -660,7 +662,7 @@ public class TaunusServerUI extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc="Init server">
     private void initServer() {
         server = new Server(this);
-        server.runServer(14253); // Default 14253
+        server.runServer(PORT);
         this.connlist = server.getConnlist();
     }// </editor-fold>
 
@@ -683,7 +685,8 @@ public class TaunusServerUI extends javax.swing.JFrame {
         } catch (Exception e) {
             Logger.getLogger(TaunusServerUI.class.getName()).log(Level.SEVERE, null, e);
         }
-        setTextToDisplay(String.format("You: %s", input));
+//       setTextToDisplay(String.format("You: %s", input));
+        setTextToDisplay(String.format("Server: %s", input));
     }//GEN-LAST:event_sendButtonActionPerformed
 
     private void inputTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_inputTextFieldActionPerformed
@@ -692,7 +695,8 @@ public class TaunusServerUI extends javax.swing.JFrame {
 
     private void startRecButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_startRecButtonActionPerformed
         if (isConnected) {
-            inputTextField.setText("1rstart");
+//            inputTextField.setText("1rstart");
+            inputTextField.setText("101:201");
             sendButton.doClick();
             startRecButton.setEnabled(false);
             stopRecButton.setEnabled(true);
@@ -703,7 +707,8 @@ public class TaunusServerUI extends javax.swing.JFrame {
 
     private void stopRecButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_stopRecButtonActionPerformed
         if (isConnected) {
-            inputTextField.setText("1rstop");
+//            inputTextField.setText("1rstop");
+            inputTextField.setText("102:201");
             sendButton.doClick();
             startRecButton.setEnabled(true);
             stopRecButton.setEnabled(false);
@@ -714,7 +719,8 @@ public class TaunusServerUI extends javax.swing.JFrame {
 
     private void stopStreamButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_stopStreamButtonActionPerformed
         if (isConnected) {
-            inputTextField.setText("1stop");
+//            inputTextField.setText("1stop");
+            inputTextField.setText("102:202");
             sendButton.doClick();
             startStreamButton.setEnabled(true);
             stopStreamButton.setEnabled(false);
@@ -725,7 +731,8 @@ public class TaunusServerUI extends javax.swing.JFrame {
 
     private void startStreamButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_startStreamButtonActionPerformed
         if (isConnected) {
-            inputTextField.setText("1start");
+//            inputTextField.setText("1start");
+            inputTextField.setText("101:202");
             sendButton.doClick();
             startStreamButton.setEnabled(false);
             stopStreamButton.setEnabled(true);
@@ -736,9 +743,12 @@ public class TaunusServerUI extends javax.swing.JFrame {
 
     private void disconnectButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_disconnectButtonActionPerformed
         if (isConnected) {
-            inputTextField.setText("exit");
+//            inputTextField.setText("exit");
+            inputTextField.setText("102:301");
             sendButton.doClick();
-            setConnectedStatus(false);
+            if (connlist.size() < 1) {
+                setConnectedStatus(false);
+            }
         } else {
             setConnectedStatus(true);
         }
@@ -849,7 +859,7 @@ public class TaunusServerUI extends javax.swing.JFrame {
                         setSensorValue(4, (int) item4.getYValue());
 
                         // Draw vertical line /
-                        a1 = new XYLineAnnotation(i, 0, i, 1024);
+//                        a1 = new XYLineAnnotation(i, 0, i, 1024);
 // redraws the whole line chart - plot.addAnnotation(a1);
                         
 //                        subplot = new XYPlot(dataset, null, new NumberAxis("Fourth"), new StandardXYItemRenderer());
@@ -912,18 +922,20 @@ public class TaunusServerUI extends javax.swing.JFrame {
 
     private void setTextToDisplay(String input) {
         if (input.length() > 4) {
-            String subInput = input.substring(5);
-            if (subInput.charAt(0) == '1') {
-                input = "You: " + subInput.substring(1);
-            }
-
-            if (subInput.equalsIgnoreCase("clear")) {
+//            String subInput = input.substring(9);
+//            if (subInput.charAt(0) == '1') {
+//                input = "You: " + subInput.substring(1);
+//           }
+            
+//          if (subInput.equalsIgnoreCase("clear")) {  
+            if (input.equalsIgnoreCase("Server: clear")) {
                 outputTextArea.setText("");
                 inputTextField.setText("");
                 return;
             }
         }
 
+        // Autoscroll the outputTextArea
         if (outputTextArea.getText().equalsIgnoreCase("")) {
             outputTextArea.setText(input);
         } else {

@@ -5,12 +5,15 @@
 package no.gasa.master;
 
 import java.awt.Point;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.*;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.Timer;
 
 /**
  *
@@ -31,6 +34,10 @@ public class Connection implements Runnable {
     // Receiving recorded data
     private ArrayList<Point> recordedData;
     private boolean isReceivingRecordedData = false;
+    
+    private Timer pingtimer;
+    private boolean isRunning = true;
+    private boolean pongPending = false;
     
     /** Constructor */
     public Connection(Server hostServer, Socket sock) {
@@ -83,13 +90,13 @@ public class Connection implements Runnable {
     }
 
     private void closeConnection() throws IOException {
+	connlist.remove(this);
+	mHostServer.setConnectedStatus(false);
 	input.close();
 	output.flush();
 	output.close();
-	connlist.remove(this);
 	sock.close();
-        mHostServer.setConnectedStatus(false);
-	System.out.println("Connection terminated...");
+        System.out.println("Connection terminated...");
     }
 
     // Receives byte array and returns the string
@@ -132,19 +139,54 @@ public class Connection implements Runnable {
             getStreams();
             
             // handle incoming/outgoing
-            String helloStr = recvString();
+            String helloStr = recvString(); // receive start:connection hello message
+            if (helloStr.equals("101:301")) { 
+                helloStr = "OK: Connection initiated";
+            }
             setTextToDisplay(helloStr);
 
             // setup regularly ping timer -> recv pong
-            while (true) {
+            pingtimer = new Timer(60000, pingsender);
+            pingtimer.start();
+            
+            while (isRunning) {
 		// process requests
 		String message = recvString();
-
+                
                 try {
-                    int cmd = Integer.parseInt(message.substring(0, 3));
                     String[] arr = message.split(":");
+                    int cmd = Integer.parseInt(arr[0]);
+                    int cmdID = Integer.valueOf(arr[1]);
                     switch (cmd) {
-                        case 101:
+                        case 101: // start
+                            switch(cmdID) {
+                                case 203: // receiving
+                                    System.out.println("Start receiving recorded data...");
+                                    recordedData = new ArrayList<Point>();
+                                    isReceivingRecordedData = true;
+                                    break;
+                                case 303: // pong
+                                    System.out.println("Pong received, pong no longer pending.");
+                                    pongPending = false;
+                                    continue;
+                            }
+                            break;
+                        case 102: // stop
+                            switch(cmdID) {
+                                case 203: // receiving
+                                    System.out.println("Stop receiving recorded data...");
+                                    setRecordedDataToGUI(recordedData);
+                                    isReceivingRecordedData = false;
+                                    break;
+                                case 301: // connection
+                                    sendString("102:301");
+                                    System.out.println("Stop connection received...");
+                                    setTextToDisplay("Exiting...");
+                                    isRunning = false;
+                                    continue;
+                            }
+                            break;
+                        case 401: // sensordata:sensorID:value data message
                             int sID = Integer.valueOf(arr[1]);
                             int val = Integer.valueOf(arr[2]);
                             if (!isReceivingRecordedData) {
@@ -153,27 +195,10 @@ public class Connection implements Runnable {
                                 recordedData.add(new Point(sID, val));
                             }
                             break;
-                        case 104:
-                            System.out.println("Start receiving recorded data...");
-                            recordedData = new ArrayList<Point>();
-                            isReceivingRecordedData = true;
-                            break;
-                        case 105:
-                            System.out.println("Stop receiving recorded data...");
-                            setRecordedDataToGUI(recordedData);
-                            isReceivingRecordedData = false;
-                    }
-                    
+                    }                    
                 } catch (NumberFormatException e) {
                     setTextToDisplay(message);
                 }
-
-                if (message.equalsIgnoreCase("exit")) {
-                    setTextToDisplay("Exiting...");
-                    break;
-		}
-
-//		sendString(message);
             } // end while
 
             // remove this socket and close it
@@ -184,11 +209,38 @@ public class Connection implements Runnable {
 	}
 
 	System.out.println("Connection: Bye bye...");
+    } // end run
 
-	} // end run
-
-	@Override
-	public String toString() {
-		return String.format("Client: %s", sock.getInetAddress().getHostAddress());
-	}
+    // ping timer action
+    ActionListener pingsender = new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent ae) {
+            try {
+                if (pongPending) {
+                    isRunning = false;
+                    pingtimer.stop();
+                    if (!sock.isClosed()) {
+                        closeConnection();
+                    }
+                    System.out.println("PingTimer stopped.");
+                } else {
+                    // send ping
+                    System.out.println("Sending ping, pong pending.");
+                    pongPending = true;
+                    if (sock != null) {
+                        if (!sock.isClosed()) {
+                            sendString("101:302"); // start:ping
+                        }
+                    }
+                }
+            } catch (IOException ex) {
+                Logger.getLogger(Connection.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    };
+ 
+    @Override
+    public String toString() {
+        return String.format("Client: %s", sock.getInetAddress().getHostAddress());
+    }
 } // end class
